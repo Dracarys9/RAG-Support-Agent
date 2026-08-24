@@ -19,6 +19,26 @@ class SupportResponse:
     tool_used: str | None = None
 
 
+class SupportSession:
+    """Conversation memory for one customer session only."""
+
+    def __init__(self, agent: "SupportAgent"):
+        self.agent = agent
+        self.history: list[tuple[str, SupportResponse]] = []
+        self.last_topic: str | None = None
+        self.last_order_id: str | None = None
+
+    def answer(self, message: str) -> SupportResponse:
+        response = self.agent.answer(message, session=self)
+        self.history.append((message, response))
+        order_id = self.agent._find_order_id(message)
+        if order_id:
+            self.last_order_id = order_id
+        if response.sources:
+            self.last_topic = message
+        return response
+
+
 class SupportAgent:
     """A small, deterministic support program built on the safe data functions."""
 
@@ -26,8 +46,22 @@ class SupportAgent:
         self.sections = load_knowledge_base(knowledge_base_dir)
         self.orders_file = Path(orders_file)
 
-    def answer(self, message: str) -> SupportResponse:
-        """Answer one message using either knowledge search or order lookup."""
+    def new_session(self) -> SupportSession:
+        return SupportSession(self)
+
+    def answer(
+        self, message: str, session: SupportSession | None = None
+    ) -> SupportResponse:
+        """Answer one message using optional context from one session."""
+        order_id = self._find_order_id(message)
+        is_order_follow_up = bool(
+            session
+            and session.last_order_id
+            and self._looks_like_order_follow_up(message)
+        )
+        if is_order_follow_up:
+            order_id = session.last_order_id
+
         if self._asks_for_private_information(message):
             return SupportResponse(
                 answer=(
@@ -38,15 +72,17 @@ class SupportAgent:
                 handoff=True,
             )
 
-        order_id = self._find_order_id(message)
-        if self._is_order_status_question(message):
+        if self._is_order_status_question(message) or is_order_follow_up:
             if not order_id:
                 return SupportResponse(
                     answer="Please provide your order ID, such as ORD-1007, so I can check the order.",
                 )
             return self._answer_order(order_id)
 
-        return self._answer_from_knowledge(message)
+        search_message = message
+        if session and session.last_topic and self._looks_like_follow_up(message):
+            search_message = f"{session.last_topic} {message}"
+        return self._answer_from_knowledge(search_message)
 
     def _answer_order(self, order_id: str) -> SupportResponse:
         result = lookup_order(
@@ -115,6 +151,19 @@ class SupportAgent:
         return normalize_order_id(match.group(0)) if match else None
 
     @staticmethod
+    def _looks_like_follow_up(message: str) -> bool:
+        lowered = message.strip().lower()
+        return lowered.startswith(("what about", "and ", "how long", "when ", "does it", "can it"))
+
+    @staticmethod
+    def _looks_like_order_follow_up(message: str) -> bool:
+        lowered = message.lower()
+        return any(
+            word in lowered
+            for word in ("when", "arrive", "delivery", "delivered", "shipped", "tracking")
+        )
+
+    @staticmethod
     def _is_order_status_question(message: str) -> bool:
         lowered = message.lower()
         if SupportAgent._find_order_id(message):
@@ -131,8 +180,15 @@ class SupportAgent:
             "tracking",
             "when",
         )
-        return any(word in lowered for word in order_words) and any(
-            word in lowered for word in status_words
+        clear_delivery_follow_up = (
+            ("when will" in lowered and "arrive" in lowered)
+            or "where is" in lowered
+            or "where's" in lowered
+            or "has it shipped" in lowered
+        )
+        return clear_delivery_follow_up or (
+            any(word in lowered for word in order_words)
+            and any(word in lowered for word in status_words)
         )
 
     @staticmethod
