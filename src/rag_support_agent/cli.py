@@ -3,15 +3,19 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from .llm import LLMConfig, OpenAIAnswerer
 from .support_agent import SupportAgent, SupportResponse
 
 
 def build_agent() -> SupportAgent:
     """Build the agent using the repository's supplied data folders."""
     project_root = Path(__file__).resolve().parents[2]
+    config = LLMConfig.from_env()
+    answerer = OpenAIAnswerer(config) if config.enabled else None
     return SupportAgent(
         project_root / "knowledge-base",
         project_root / "data" / "orders.json",
+        llm_answerer=answerer,
     )
 
 

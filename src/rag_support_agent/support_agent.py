@@ -7,6 +7,7 @@ import json
 from typing import Any
 
 from .knowledge_base import KnowledgeSection, load_knowledge_base, search_knowledge_base
+from .llm import LLMUnavailable
 from .orders import lookup_order, normalize_order_id
 
 
@@ -22,6 +23,7 @@ class SupportResponse:
     retrieved_passages: tuple[dict[str, Any], ...] = ()
     sanitized_tool_result: dict[str, Any] | None = None
     fallback_reason: str | None = None
+    generation_mode: str = "deterministic"
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,7 @@ class DebugTrace:
     final_answer: str
     handoff: bool
     fallback_reason: str | None
+    generation_mode: str
 
     def to_json(self) -> str:
         return json.dumps(
@@ -52,6 +55,7 @@ class DebugTrace:
                 "final_answer": self.final_answer,
                 "handoff": self.handoff,
                 "fallback_reason": self.fallback_reason,
+                "generation_mode": self.generation_mode,
             },
             indent=2,
         )
@@ -80,9 +84,15 @@ class SupportSession:
 class SupportAgent:
     """A small, deterministic support program built on the safe data functions."""
 
-    def __init__(self, knowledge_base_dir: str | Path, orders_file: str | Path):
+    def __init__(
+        self,
+        knowledge_base_dir: str | Path,
+        orders_file: str | Path,
+        llm_answerer: Any | None = None,
+    ):
         self.sections = load_knowledge_base(knowledge_base_dir)
         self.orders_file = Path(orders_file)
+        self.llm_answerer = llm_answerer
 
     def new_session(self) -> SupportSession:
         return SupportSession(self)
@@ -103,7 +113,9 @@ class SupportAgent:
             final_answer=response.answer,
             handoff=response.handoff,
             fallback_reason=response.fallback_reason,
+            generation_mode=response.generation_mode,
         )
+
         return response, trace
 
     def answer(
@@ -149,14 +161,18 @@ class SupportAgent:
                     answer="Please provide your order ID, such as ORD-1007, so I can check the order.",
                     fallback_reason="order_id_required",
                 )
-            return self._answer_order(order_id)
+            history = tuple(entry[0] for entry in session.history) if session else ()
+            return self._answer_order(order_id, history=history)
 
         search_message = message
         if session and session.last_topic and self._looks_like_follow_up(message):
             search_message = f"{session.last_topic} {message}"
-        return self._answer_from_knowledge(search_message)
+        history = tuple(entry[0] for entry in session.history) if session else ()
+        return self._answer_from_knowledge(search_message, history=history)
 
-    def _answer_order(self, order_id: str) -> SupportResponse:
+    def _answer_order(
+        self, order_id: str, *, history: tuple[str, ...] = ()
+    ) -> SupportResponse:
         result = lookup_order(
             self.orders_file,
             order_id,
@@ -190,16 +206,42 @@ class SupportAgent:
         if data.get("estimated_delivery") and data["estimated_delivery"] not in answer:
             answer += f" Estimated delivery: {data['estimated_delivery']}."
 
+        fallback_reason = "operational_exception" if result.get("handoff_recommended") else None
+        if self.llm_answerer is not None:
+            try:
+                generated = self.llm_answerer.answer(
+                    f"Give a concise status update for order {order_id}.",
+                    history=history,
+                    sanitized_tool_result=dict(data),
+                )
+                if order_id not in generated:
+                    generated = f"Order {order_id}: {generated}"
+                if status not in generated.lower():
+                    generated = f"Order {order_id} is {status}. {generated}"
+                return SupportResponse(
+                    answer=generated,
+                    handoff=result.get("handoff_recommended", False),
+                    tool_used="order_lookup",
+                    tool_arguments={"order_id": order_id},
+                    sanitized_tool_result=dict(data),
+                    fallback_reason=fallback_reason,
+                    generation_mode="llm",
+                )
+            except LLMUnavailable:
+                fallback_reason = "llm_unavailable"
+
         return SupportResponse(
             answer=answer,
             handoff=result.get("handoff_recommended", False),
             tool_used="order_lookup",
             tool_arguments={"order_id": order_id},
             sanitized_tool_result=dict(data),
-            fallback_reason="operational_exception" if result.get("handoff_recommended") else None,
+            fallback_reason=fallback_reason,
         )
 
-    def _answer_from_knowledge(self, message: str) -> SupportResponse:
+    def _answer_from_knowledge(
+        self, message: str, *, history: tuple[str, ...] = ()
+    ) -> SupportResponse:
         customer_sections = [
             section
             for section in self.sections
@@ -263,6 +305,24 @@ class SupportAgent:
                 fallback_reason="unsupported_action",
             )
 
+        if self.llm_answerer is not None:
+            try:
+                generated = self.llm_answerer.answer(
+                    message,
+                    history=history,
+                    passages=passages,
+                )
+                if source not in generated:
+                    generated = f"{generated}\n\nSource: {source}"
+                return SupportResponse(
+                    answer=generated,
+                    sources=(source,),
+                    retrieved_passages=passages,
+                    generation_mode="llm",
+                )
+            except LLMUnavailable:
+                pass
+
         answer = best.text
         if best.file_name == "09-trailplus-membership.md" and best.heading == "Return window":
             answer += " In plain terms, that is 45 calendar days from delivery."
@@ -270,6 +330,7 @@ class SupportAgent:
             answer=f"{answer}\n\nSource: {source}",
             sources=(source,),
             retrieved_passages=passages,
+            fallback_reason="llm_unavailable" if self.llm_answerer is not None else None,
         )
 
     @staticmethod

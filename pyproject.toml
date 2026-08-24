@@ -7,7 +7,9 @@ name = "rag-support-agent"
 version = "0.1.0"
 description = "A small, reliable support agent for the Aster & Row assignment"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "openai>=1.0,<2",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

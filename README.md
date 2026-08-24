@@ -8,7 +8,7 @@ The project currently passes all supplied visible evaluation cases.
 
 | Check | Result |
 | --- | --- |
-| Regular automated tests | **33 passed** |
+| Regular automated tests | **38 passed** |
 | Supplied visible cases | **15/15 passed** |
 | Original cases | **5/5 passed** |
 | Combined evaluation command | `python evaluation/run_visible.py` |
@@ -56,17 +56,18 @@ Type `quit` to stop the chat. To see a safe debug trace, run:
 .\.venv\Scripts\python.exe -m rag_support_agent.cli --debug
 ```
 
-No API key is required for the current version. `.env.example` is included for future configuration, and real credentials must never be committed.
+Local mode is the default and needs no API key. The project also includes a real OpenAI-compatible LLM-backed RAG mode. Copy `.env.example` to `.env`, set `MODEL_PROVIDER=llm`, and add `OPENAI_API_KEY` to use model-generated answers. Real credentials must never be committed. If the key, package, or provider is unavailable, the agent safely falls back to the deterministic answer path.
 
 ## How it works
 
-The program uses three simple layers:
+The program uses four simple layers:
 
 | Layer | What it does |
 | --- | --- |
 | Knowledge reader and search | Reads Markdown front matter, splits documents by heading, keeps source metadata, and ranks matching sections. |
 | Safe order lookup | Reads `data/orders.json`, normalizes order IDs, returns only customer-safe fields, and applies status/ETA rules. |
 | Support agent | Decides whether a message is a policy question, an order question, a follow-up, a privacy request, an unsupported action, or a case requiring human help. |
+| LLM answer writer | In optional LLM mode, sends only selected passages or sanitized order results to an OpenAI-compatible model and requires grounded, source-aware answers. |
 
 The knowledge base is filtered to active, official, customer-facing documents before customer answers are produced. Legacy, draft, and internal documents are not treated as customer authority. Genuine conflicts between the two active official Breeze Tumbler sources are shown to the customer instead of being silently hidden.
 
@@ -80,7 +81,7 @@ The implementation intentionally uses a small local Python program rather than a
 | Framework | Plain Python modules | The assignment does not require a web framework. |
 | Retrieval | Case-insensitive word matching with a few simple word connections | Easy to inspect and deterministic for this small corpus. |
 | Embeddings | None in the current version | This avoids an external service and keeps evaluation repeatable. A production version could add embeddings after the safety and precedence rules are preserved. |
-| Model | None in the current version | The deterministic program makes the key safety behaviors testable without relying on another model to grade it. |
+| Model | Optional OpenAI-compatible `gpt-5-mini`; local deterministic fallback | The model writes grounded answers only from selected context. Local mode keeps tests repeatable and works without credentials. |
 | Storage | Supplied Markdown and JSON files; sections are loaded in memory | No production database or vector store is needed for this assignment. |
 | Interface | Terminal chat | Small, easy to demonstrate, and sufficient for the assignment. |
 
@@ -174,13 +175,13 @@ The original suite contains five additional cases: normalized order IDs, returne
 
 ## Known limitations
 
-This is an assignment-sized local system, not a production deployment. Retrieval uses word matching rather than semantic embeddings, so unusual paraphrases may retrieve less useful sections. The special handling for the supplied policy conflicts is deliberate and should be replaced by a more general claim-comparison step for a larger corpus. The terminal interface has no authentication, and the mock assignment explicitly treats possession of an order ID as sufficient authentication. The system supports lookup only; it does not actually cancel orders, issue refunds, create replacements, change addresses, or create support tickets. Sessions exist only while the process is running.
+This is an assignment-sized local system, not a production deployment. Retrieval uses word matching rather than semantic embeddings, so unusual paraphrases may retrieve less useful sections. The optional LLM path depends on an OpenAI-compatible provider and should not be treated as available when the key or network is missing; the deterministic fallback remains the safe offline path. The special handling for the supplied policy conflicts is deliberate and should be replaced by a more general claim-comparison step for a larger corpus. The terminal interface has no authentication, and the mock assignment explicitly treats possession of an order ID as sufficient authentication. The system supports lookup only; it does not actually cancel orders, issue refunds, create replacements, change addresses, or create support tickets. Sessions exist only while the process is running.
 
 Before production, I would add authenticated APIs, a durable session store, semantic retrieval with metadata filters, a stronger claim/conflict detector, structured secret-safe logs, rate limits, human handoff integration, monitoring, and a larger paraphrase evaluation set.
 
 ## AI coding tools used
 
-The implementation was developed collaboratively using **Manus AI** for code planning, implementation suggestions, test writing, debugging, and documentation drafting. **Visual Studio Code**, PowerShell, Git, and GitHub were used for local review, testing, commits, and pushes.
+The implementation was developed collaboratively using **Manus AI** for code planning, implementation suggestions, test writing, debugging, documentation drafting, and the optional LLM integration design. The runtime can use the OpenAI-compatible `gpt-5-mini` model when `MODEL_PROVIDER=llm` is configured. **Visual Studio Code**, PowerShell, Git, and GitHub were used for local review, testing, commits, and pushes.
 
 One AI-generated suggestion was incomplete: an early order-question check used simple substring matching, which treated `ordered` as if it meant `order`. This caused a valid TrailPlus policy question to ask for an order ID. The check was changed to recognize complete words and a regression test was added.
 
