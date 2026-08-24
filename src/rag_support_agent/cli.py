@@ -1,0 +1,51 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from .support_agent import SupportAgent, SupportResponse
+
+
+def build_agent() -> SupportAgent:
+    """Build the agent using the repository's supplied data folders."""
+    project_root = Path(__file__).resolve().parents[2]
+    return SupportAgent(
+        project_root / "knowledge-base",
+        project_root / "data" / "orders.json",
+    )
+
+
+def format_response(response: SupportResponse) -> str:
+    """Format one response for a person using the terminal."""
+    lines = ["Agent:", response.answer]
+    if response.sources and not any(
+        source in response.answer for source in response.sources
+    ):
+        lines.append("Sources: " + "; ".join(response.sources))
+    lines.append("Human help recommended: " + ("Yes" if response.handoff else "No"))
+    return "\n".join(lines)
+
+
+def main() -> None:
+    agent = build_agent()
+    session = agent.new_session()
+    print("Aster & Row Support Agent")
+    print("Type 'quit' to stop.")
+
+    while True:
+        try:
+            message = input("\nYou: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nGoodbye.")
+            return
+
+        if message.lower() in {"quit", "exit"}:
+            print("Goodbye.")
+            return
+        if not message:
+            continue
+
+        print(format_response(session.answer(message)))
+
+
+if __name__ == "__main__":
+    main()
