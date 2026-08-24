@@ -73,6 +73,15 @@ def test_llm_answerer_uses_selected_passages_only():
     assert client.completions.calls[0]["model"] == "test-model"
 
 
+def test_llm_policy_cleanup_removes_repeated_within():
+    cleaned = SupportAgent._clean_generated_policy_answer(
+        "A customer may request a return within within 30 calendar days of delivery."
+    )
+
+    assert "within within" not in cleaned.lower()
+    assert "within 30 calendar days of delivery" in cleaned
+
+
 def test_support_agent_uses_llm_with_sanitized_order_result():
     client = FakeClient()
     answerer = OpenAIAnswerer(

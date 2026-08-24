@@ -8,7 +8,7 @@ The project currently passes all supplied visible evaluation cases.
 
 | Check | Result |
 | --- | --- |
-| Regular automated tests | **43 passed** |
+| Regular automated tests | **44 passed** |
 | Supplied visible cases | **15/15 passed** |
 | Original cases | **5/5 passed** |
 | Combined evaluation command | `python evaluation/run_visible.py` |
@@ -56,13 +56,19 @@ Type `quit` to stop the chat. To see a safe debug trace, run:
 .\.venv\Scripts\python.exe -m rag_support_agent.cli --debug
 ```
 
-Start the browser chat interface with one command:
+Start the browser chat interface with one command. The easiest Windows option avoids PowerShell script restrictions:
+
+```
+.\run_chat.bat
+```
+
+The launcher installs the project dependencies, opens `http://127.0.0.1:5000` in your browser, and starts the server. Stop the server with `Ctrl+C`. The PowerShell version is also available:
 
 ```
 .\run_chat.ps1
 ```
 
-The launcher installs the project dependencies, opens `http://127.0.0.1:5000` in your browser, and starts the server. Stop the server with `Ctrl+C`. If PowerShell blocks local scripts, use:
+If PowerShell blocks the `.ps1` file, use the `.bat` command above or run:
 
 ```
 powershell -ExecutionPolicy Bypass -File .\run_chat.ps1
@@ -212,6 +218,7 @@ A short demo recording will be added to `docs/demo.gif` or as a clickable video 
 ├── evaluation/
 ├── knowledge-base/
 ├── web/
+├── run_chat.bat
 ├── run_chat.ps1
 ├── src/rag_support_agent/
 ├── tests/

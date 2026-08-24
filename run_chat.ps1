@@ -10,6 +10,13 @@ if (-not (Test-Path $python)) {
     exit 1
 }
 
+$browserScript = Join-Path $projectRoot "web\static\app.js"
+if (-not (Test-Path $browserScript)) {
+    Write-Host "The browser file web\static\app.js is missing." -ForegroundColor Red
+    Write-Host "Copy the enhanced UI files into the web\static folder, then run this command again."
+    exit 1
+}
+
 Write-Host "Preparing Aster & Row support chat..." -ForegroundColor Cyan
 & $python -m pip install -e . --disable-pip-version-check --quiet
 if ($LASTEXITCODE -ne 0) {

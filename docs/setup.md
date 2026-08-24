@@ -26,7 +26,7 @@ If PowerShell blocks activation, run the project commands without activating the
 .\.venv\Scripts\python.exe evaluation\run_visible.py
 ```
 
-The current expected results are **43 passing tests**, **15/15 visible cases**, and **5/5 original cases**.
+The current expected results are **44 passing tests**, **15/15 visible cases**, and **5/5 original cases**.
 
 ## Run the local deterministic chat
 
@@ -42,15 +42,21 @@ Type `quit` to stop. Use `--debug` to print the safe trace:
 
 ## Run the browser chat interface with one command
 
-The easiest way to start the browser chat is:
+The easiest Windows option is the batch launcher. It does not require a digital signature:
+
+```
+.\run_chat.bat
+```
+
+The launcher installs the project dependencies if needed, opens the browser, and starts the support server. Open `http://127.0.0.1:5000` if the browser does not open automatically. Press `Ctrl+C` in PowerShell to stop the server.
+
+A PowerShell version is also included:
 
 ```
 .\run_chat.ps1
 ```
 
-The launcher installs the project dependencies if needed, opens the browser, and starts the support server. Open `http://127.0.0.1:5000` if the browser does not open automatically. Press `Ctrl+C` in PowerShell to stop the server.
-
-If PowerShell blocks local scripts, use:
+If PowerShell blocks the `.ps1` file, use the `.bat` command above or run:
 
 ```
 powershell -ExecutionPolicy Bypass -File .\run_chat.ps1

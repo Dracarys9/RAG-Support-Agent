@@ -363,6 +363,7 @@ class SupportAgent:
             cleaned,
             flags=re.IGNORECASE,
         )
+        cleaned = re.sub(r"\bwithin\s+within\b", "within", cleaned, flags=re.IGNORECASE)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         return cleaned
 
