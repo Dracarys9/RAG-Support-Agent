@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+import json
 from typing import Any
 
 from .knowledge_base import KnowledgeSection, load_knowledge_base, search_knowledge_base
@@ -18,6 +19,33 @@ class SupportResponse:
     handoff: bool = False
     tool_used: str | None = None
     tool_arguments: dict[str, str] | None = None
+
+
+@dataclass(frozen=True)
+class DebugTrace:
+    """Safe information that helps inspect one answer."""
+
+    message: str
+    history: tuple[str, ...]
+    retrieved_sources: tuple[str, ...]
+    tool_used: str | None
+    tool_arguments: dict[str, str] | None
+    final_answer: str
+    handoff: bool
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "message": self.message,
+                "history": self.history,
+                "retrieved_sources": self.retrieved_sources,
+                "tool_used": self.tool_used,
+                "tool_arguments": self.tool_arguments,
+                "final_answer": self.final_answer,
+                "handoff": self.handoff,
+            },
+            indent=2,
+        )
 
 
 class SupportSession:
@@ -49,6 +77,22 @@ class SupportAgent:
 
     def new_session(self) -> SupportSession:
         return SupportSession(self)
+
+    def answer_with_trace(
+        self, message: str, session: SupportSession | None = None
+    ) -> tuple[SupportResponse, DebugTrace]:
+        history = tuple(entry[0] for entry in session.history) if session else ()
+        response = self.answer(message, session=session)
+        trace = DebugTrace(
+            message=message,
+            history=history,
+            retrieved_sources=response.sources,
+            tool_used=response.tool_used,
+            tool_arguments=response.tool_arguments,
+            final_answer=response.answer,
+            handoff=response.handoff,
+        )
+        return response, trace
 
     def answer(
         self, message: str, session: SupportSession | None = None

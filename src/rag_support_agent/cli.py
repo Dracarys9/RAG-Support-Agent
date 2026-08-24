@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from .support_agent import SupportAgent, SupportResponse
@@ -44,7 +45,13 @@ def main() -> None:
         if not message:
             continue
 
-        print(format_response(session.answer(message)))
+        if "--debug" in sys.argv[1:]:
+            response, trace = agent.answer_with_trace(message, session=session)
+            print(format_response(response))
+            print("\nDebug trace:")
+            print(trace.to_json())
+        else:
+            print(format_response(session.answer(message)))
 
 
 if __name__ == "__main__":
