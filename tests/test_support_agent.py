@@ -22,6 +22,15 @@ def test_policy_question_uses_knowledge_search_and_source():
     assert response.handoff is False
 
 
+def test_trailplus_return_question_uses_return_window_section():
+    response = make_agent().answer(
+        "My TrailPlus membership was active when I ordered. What is my return window?"
+    )
+
+    assert "45-calendar-day" in response.answer
+    assert response.sources == ("09-trailplus-membership.md — Return window",)
+
+
 def test_order_question_uses_safe_order_lookup():
     response = make_agent().answer("Where is ORD-1007 and when should it arrive?")
 

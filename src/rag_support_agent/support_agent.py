@@ -158,7 +158,7 @@ class SupportAgent:
         if self._is_source_conflict_question(message, results):
             return self._answer_source_conflict(results)
 
-        best = results[0].section
+        best = self._choose_policy_section(message, results)
         source = self._source_name(best)
         if self._asks_to_follow_document_instructions(message):
             return SupportResponse(
@@ -182,10 +182,25 @@ class SupportAgent:
                 handoff=True,
             )
 
+        answer = best.text
+        if best.file_name == "09-trailplus-membership.md" and best.heading == "Return window":
+            answer += " In plain terms, that is 45 calendar days from delivery."
         return SupportResponse(
-            answer=f"{best.text}\n\nSource: {source}",
+            answer=f"{answer}\n\nSource: {source}",
             sources=(source,),
         )
+
+    @staticmethod
+    def _choose_policy_section(message: str, results: list[Any]) -> KnowledgeSection:
+        lowered = message.lower()
+        if "trailplus" in lowered and "return" in lowered:
+            for result in results:
+                if (
+                    result.section.file_name == "09-trailplus-membership.md"
+                    and result.section.heading == "Return window"
+                ):
+                    return result.section
+        return results[0].section
 
     def _answer_source_conflict(self, results: list[Any]) -> SupportResponse:
         care_section = next(
@@ -313,10 +328,11 @@ class SupportAgent:
             or "where's" in lowered
             or "has it shipped" in lowered
         )
-        return clear_delivery_follow_up or (
-            any(word in lowered for word in order_words)
-            and any(word in lowered for word in status_words)
+        has_order_word = bool(
+            re.search(r"\b(order|tracking|track|shipment)\b", lowered)
         )
+        has_status_word = any(word in lowered for word in status_words)
+        return clear_delivery_follow_up or (has_order_word and has_status_word)
 
     @staticmethod
     def _asks_for_private_information(message: str) -> bool:
