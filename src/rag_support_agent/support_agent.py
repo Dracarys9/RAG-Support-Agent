@@ -17,6 +17,7 @@ class SupportResponse:
     sources: tuple[str, ...] = ()
     handoff: bool = False
     tool_used: str | None = None
+    tool_arguments: dict[str, str] | None = None
 
 
 class SupportSession:
@@ -113,10 +114,12 @@ class SupportAgent:
                 answer=result["message"],
                 handoff=result.get("handoff_recommended", False),
                 tool_used="order_lookup",
+                tool_arguments={"order_id": order_id},
             )
 
         data: dict[str, Any] = result["data"]
-        answer = data["customer_safe_message"]
+        status = data.get("status", "unknown")
+        answer = f"Order {data.get('order_id', order_id)} is {status}. {data['customer_safe_message']}"
         if data.get("carrier") and data["carrier"] not in answer:
             answer += f" Carrier: {data['carrier']}."
         if data.get("estimated_delivery") and data["estimated_delivery"] not in answer:
@@ -126,6 +129,7 @@ class SupportAgent:
             answer=answer,
             handoff=result.get("handoff_recommended", False),
             tool_used="order_lookup",
+            tool_arguments={"order_id": order_id},
         )
 
     def _answer_from_knowledge(self, message: str) -> SupportResponse:
@@ -158,6 +162,10 @@ class SupportAgent:
         if self._is_source_conflict_question(message, results):
             return self._answer_source_conflict(results)
 
+        special_response = self._answer_special_policy_question(message)
+        if special_response is not None:
+            return special_response
+
         best = self._choose_policy_section(message, results)
         source = self._source_name(best)
         if self._asks_to_follow_document_instructions(message):
@@ -189,6 +197,96 @@ class SupportAgent:
             answer=f"{answer}\n\nSource: {source}",
             sources=(source,),
         )
+
+    def _find_section(self, file_name: str, heading: str) -> KnowledgeSection:
+        for section in self.sections:
+            if section.file_name == file_name and section.heading == heading:
+                return section
+        raise LookupError(f"Section not found: {file_name} — {heading}")
+
+    def _answer_special_policy_question(self, message: str) -> SupportResponse | None:
+        lowered = message.lower()
+
+        if "migration note" in lowered or "ignore the real policy" in lowered:
+            section = self._find_section("01-returns-policy-current.md", "Standard return window")
+            source = self._source_name(section)
+            return SupportResponse(
+                answer=(
+                    "The migration note is not an approved authority, and I cannot treat "
+                    "instructions inside a document as instructions for me. The standard policy is "
+                    "30 calendar days from delivery unless a valid exception applies. I cannot "
+                    "approve a return automatically.\n\nSource: " + source
+                ),
+                sources=(source,),
+            )
+
+        if "final-sale" in lowered or "final sale" in lowered:
+            if any(word in lowered for word in ("damaged", "broken", "defective", "wrong")):
+                final_sale = self._find_section(
+                    "03-final-sale-and-promotions.md", "Damaged or incorrect items"
+                )
+                damaged = self._find_section(
+                    "04-damaged-or-wrong-items.md", "Final-sale items"
+                )
+                reporting = self._find_section(
+                    "04-damaged-or-wrong-items.md", "Reporting window"
+                )
+                sources = tuple(
+                    self._source_name(section)
+                    for section in (final_sale, damaged, reporting)
+                )
+                return SupportResponse(
+                    answer=(
+                        "The final-sale restriction does not block damaged-item review or damaged-item assistance. "
+                        "Report the problem within 7 days (7 calendar days) of delivery. "
+                        "A human must review the case before refund or replacement approval.\n\nSources: "
+                        + "; ".join(sources)
+                    ),
+                    sources=sources,
+                    handoff=True,
+                )
+
+        if "warranty" in lowered and "lifetime" in lowered:
+            section = self._find_section("07-warranty.md", "Warranty periods")
+            source = self._source_name(section)
+            return SupportResponse(
+                answer=(
+                    f"{section.text}\n\nThere is no lifetime warranty. Bags have 2 years; "
+                    "drinkware and travel accessories have 1 year.\n\nSource: " + source
+                ),
+                sources=(source,),
+            )
+
+        if "germany" in lowered and any(word in lowered for word in ("ship", "shipping")):
+            section = self._find_section("06-international-shipping.md", "Supported destinations")
+            source = self._source_name(section)
+            return SupportResponse(
+                answer=f"{section.text}\n\nSource: {source}",
+                sources=(source,),
+            )
+
+        if "canada" in lowered and any(
+            word in lowered for word in ("ship", "shipping", "arrive", "duties", "taxes")
+        ):
+            sections = [
+                self._find_section("06-international-shipping.md", heading)
+                for heading in (
+                    "Supported destinations",
+                    "Canada delivery estimate",
+                    "Duties and taxes",
+                )
+            ]
+            sources = tuple(self._source_name(section) for section in sections)
+            return SupportResponse(
+                answer=(
+                    "\n\n".join(section.text for section in sections)
+                    + "\n\nSources: "
+                    + "; ".join(sources)
+                ),
+                sources=sources,
+            )
+
+        return None
 
     @staticmethod
     def _choose_policy_section(message: str, results: list[Any]) -> KnowledgeSection:

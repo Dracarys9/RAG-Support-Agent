@@ -120,7 +120,15 @@ def evaluate_case(agent: SupportAgent, case: dict[str, Any]) -> dict[str, Any]:
 
     tool_arguments = expect.get("tool_arguments")
     if tool_arguments:
-        checks.append(("tool argument noted", tool_arguments["order_id"].lower() in text))
+        checks.append(
+            (
+                "tool argument recorded",
+                any(
+                    response.tool_arguments == tool_arguments
+                    for response in responses
+                ),
+            )
+        )
 
     passed = all(result for _, result in checks)
     return {
