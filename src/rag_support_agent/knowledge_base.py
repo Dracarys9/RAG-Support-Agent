@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,54 @@ class KnowledgeSection:
     heading: str
     text: str
     metadata: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    """A knowledge-base section and its simple matching score."""
+
+    section: KnowledgeSection
+    score: int
+
+
+_QUERY_EXPANSIONS = {
+    "long": {"window", "days", "delivery", "estimate"},
+    "ship": {"shipping", "ships", "shipped", "destination"},
+    "arrive": {"arrival", "delivery", "estimate"},
+    "return": {"returns"},
+}
+
+
+_STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "can",
+    "do",
+    "does",
+    "for",
+    "how",
+    "i",
+    "is",
+    "my",
+    "of",
+    "on",
+    "the",
+    "to",
+    "what",
+    "when",
+    "where",
+    "will",
+    "with",
+}
+
+
+
+def _tokens(text: str) -> set[str]:
+    """Return simple, case-insensitive search words."""
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    return {word for word in words if len(word) > 1 and word not in _STOP_WORDS}
 
 
 
@@ -81,6 +130,51 @@ def parse_markdown_file(path: Path) -> list[KnowledgeSection]:
 
     save_section()
     return sections
+
+
+
+def search_knowledge_base(
+    sections: list[KnowledgeSection], query: str, limit: int = 5
+) -> list[SearchResult]:
+    """Return the sections with the most words matching a customer question."""
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
+
+    query_tokens = _tokens(query)
+    if not query_tokens:
+        return []
+
+    expanded_query_tokens = set(query_tokens)
+    for token in query_tokens:
+        expanded_query_tokens.update(_QUERY_EXPANSIONS.get(token, set()))
+
+    results: list[SearchResult] = []
+    for section in sections:
+        heading_tokens = _tokens(section.heading)
+        body_tokens = _tokens(section.text)
+        matches = expanded_query_tokens & (heading_tokens | body_tokens)
+        if not matches:
+            continue
+
+        exact_matches = query_tokens & (heading_tokens | body_tokens)
+        expanded_matches = (expanded_query_tokens - query_tokens) & (
+            heading_tokens | body_tokens
+        )
+        score = (
+            (3 * len(exact_matches))
+            + len(expanded_matches)
+            + (2 * len(query_tokens & heading_tokens))
+        )
+        results.append(SearchResult(section=section, score=score))
+
+    results.sort(
+        key=lambda result: (
+            -result.score,
+            result.section.file_name,
+            result.section.heading,
+        )
+    )
+    return results[:limit]
 
 
 
