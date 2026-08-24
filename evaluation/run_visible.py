@@ -141,26 +141,41 @@ def evaluate_case(agent: SupportAgent, case: dict[str, Any]) -> dict[str, Any]:
 
 
 def main() -> int:
-    cases_path = PROJECT_ROOT / "evaluation" / "visible-cases.json"
-    cases = json.loads(cases_path.read_text(encoding="utf-8"))["cases"]
+    suite_files = (
+        ("visible", PROJECT_ROOT / "evaluation" / "visible-cases.json"),
+        ("original", PROJECT_ROOT / "evaluation" / "original-cases.json"),
+    )
     agent = SupportAgent(PROJECT_ROOT / "knowledge-base", PROJECT_ROOT / "data" / "orders.json")
-    results = [evaluate_case(agent, case) for case in cases]
+    suite_results: dict[str, list[dict[str, Any]]] = {}
+    all_results: list[dict[str, Any]] = []
+
+    for suite_name, cases_path in suite_files:
+        cases = json.loads(cases_path.read_text(encoding="utf-8"))["cases"]
+        results = [evaluate_case(agent, case) for case in cases]
+        suite_results[suite_name] = results
+        all_results.extend(results)
+        for result in results:
+            status = "PASS" if result["passed"] else "FAIL"
+            failed_checks = [name for name, passed in result["checks"] if not passed]
+            suffix = f" | failed: {', '.join(failed_checks)}" if failed_checks else ""
+            print(f"[{status}] {suite_name}/{result['id']}{suffix}")
 
     category_totals: dict[str, list[bool]] = defaultdict(list)
-    for result in results:
+    for result in all_results:
         category_totals[result["category"]].append(result["passed"])
-        status = "PASS" if result["passed"] else "FAIL"
-        failed_checks = [name for name, passed in result["checks"] if not passed]
-        suffix = f" | failed: {', '.join(failed_checks)}" if failed_checks else ""
-        print(f"[{status}] {result['id']}{suffix}")
+
+    print("\nSuite results:")
+    for suite_name, results in suite_results.items():
+        passed = sum(result["passed"] for result in results)
+        print(f"- {suite_name}: {passed}/{len(results)} passed")
 
     print("\nCategory results:")
     for category, values in sorted(category_totals.items()):
         print(f"- {category}: {sum(values)}/{len(values)} passed")
 
-    total_passed = sum(result["passed"] for result in results)
-    print(f"\nTotal: {total_passed}/{len(results)} cases passed")
-    return 0 if total_passed == len(results) else 1
+    total_passed = sum(result["passed"] for result in all_results)
+    print(f"\nTotal: {total_passed}/{len(all_results)} cases passed")
+    return 0 if total_passed == len(all_results) else 1
 
 
 if __name__ == "__main__":

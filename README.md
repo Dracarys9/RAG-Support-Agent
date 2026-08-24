@@ -8,11 +8,12 @@ The project currently passes all supplied visible evaluation cases.
 
 | Check | Result |
 | --- | --- |
-| Regular automated tests | **32 passed** |
+| Regular automated tests | **33 passed** |
 | Supplied visible cases | **15/15 passed** |
-| Visible evaluation command | `python evaluation/run_visible.py` |
+| Original cases | **5/5 passed** |
+| Combined evaluation command | `python evaluation/run_visible.py` |
 
-The original baseline before the policy and order-answer improvements was **8/15 visible cases**. The final visible result is **15/15**.
+The original baseline before the policy and order-answer improvements was **8/15 visible cases**. The final result is **15/15 visible cases and 5/5 original cases**, for **20/20 total cases**.
 
 ## Setup on Windows PowerShell
 
@@ -87,6 +88,8 @@ The implementation intentionally uses a small local Python program rather than a
 
 The agent does not expose customer email addresses, shipping addresses, internal notes, risk scores, or support tags. It treats document text and order data as information rather than instructions. It does not follow the prompt-injection text in the migration scratchpad. It does not promise that a refund, cancellation, replacement, address change, or approval has been completed.
 
+Debug mode records the current message, previous conversation messages, retrieved passage text, front-matter metadata, retrieval scores, safe tool arguments, a sanitized tool result, the final answer, handoff status, and a fallback reason. It never includes private order fields.
+
 The agent asks for an order ID when one is missing, handles unknown IDs safely, uses the order status as authoritative, removes stale delivery fields for cancelled and returned orders, and does not invent an ETA when one is unavailable. It recommends human help for conflicts, insufficient information, unknown orders, privacy requests, unsupported actions, and operational exceptions.
 
 ## Evaluation
@@ -97,7 +100,7 @@ Run the supplied visible cases with:
 .\.venv\Scripts\python.exe evaluation\run_visible.py
 ```
 
-The evaluator prints every case separately, then prints totals by category. It uses deterministic checks for answer terms, forbidden content, source files, handoff decisions, and tool use. It does not use another AI model to grade the results.
+The evaluator prints every visible and original case separately, then prints suite totals and category totals. It uses deterministic checks for answer terms, forbidden content, source files, handoff decisions, tool names, and tool arguments. It does not use another AI model to grade the results.
 
 The current final categories are:
 
@@ -113,6 +116,9 @@ The current final categories are:
 | Source conflict | 1/1 |
 | Tool reliability | 3/3 |
 | Tool use | 2/2 |
+| Unsupported action | 1/1 |
+
+The original suite contains five additional cases: normalized order IDs, returned-order stale data, unsupported refunds, unsupported material claims, and a conflict paraphrase.
 
 ## Bug diary
 

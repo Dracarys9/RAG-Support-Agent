@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "purpose": "Original deterministic regression cases added for the assignment submission.",
+  "cases": [
+    {
+      "id": "original-normalized-order-id",
+      "category": "tool-reliability",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Can you track ord 1011?"
+        }
+      ],
+      "expect": {
+        "must_include": ["Canada Post", "shipped"],
+        "must_not_include": ["arrival date", "risk score"],
+        "tool": "order_lookup",
+        "tool_arguments": {"order_id": "ORD-1011"},
+        "handoff": false
+      }
+    },
+    {
+      "id": "original-returned-order-no-stale-data",
+      "category": "tool-reliability",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Is ORD-1008 still arriving?"
+        }
+      ],
+      "expect": {
+        "must_include": ["returned"],
+        "must_not_include": ["July 25, 2026", "tracking"],
+        "tool": "order_lookup",
+        "handoff": false
+      }
+    },
+    {
+      "id": "original-refund-not-supported",
+      "category": "unsupported-action",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Can you give me a refund?"
+        }
+      ],
+      "must_include": [],
+      "expect": {
+        "must_include": ["cannot complete", "human"],
+        "tool": "not_called",
+        "handoff": true
+      }
+    },
+    {
+      "id": "original-unknown-material-question",
+      "category": "abstention",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Are the bags made with recycled ocean plastic?"
+        }
+      ],
+      "expect": {
+        "must_include": ["not enough", "human"],
+        "must_not_include": ["certified", "guaranteed"],
+        "tool": "not_called",
+        "handoff": true
+      }
+    },
+    {
+      "id": "original-breeze-conflict-paraphrase",
+      "category": "source-conflict",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Is the Breeze Tumbler safe to clean in a dishwasher?"
+        }
+      ],
+      "expect": {
+        "must_include": ["sources conflict", "hand-wash", "dishwasher safe"],
+        "required_sources": ["11-product-care.md", "12-breeze-tumbler-product-card.md"],
+        "handoff": true
+      }
+    }
+  ]
+}

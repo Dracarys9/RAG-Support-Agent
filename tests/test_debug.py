@@ -23,8 +23,13 @@ def test_policy_debug_trace_contains_source_and_answer():
     assert response.answer == trace.final_answer
     assert "01-returns-policy-current.md" in trace_text
     assert "Standard return window" in trace_text
+    assert trace.retrieved_passages
+    assert trace.retrieved_passages[0]["metadata"]["status"] == "active"
+    assert "score" in trace.retrieved_passages[0]
+    assert "30 calendar days" in trace.retrieved_passages[0]["text"]
     assert trace.tool_used is None
     assert trace.handoff is False
+    assert trace.fallback_reason is None
 
 
 def test_order_debug_trace_contains_safe_tool_details():
@@ -33,6 +38,8 @@ def test_order_debug_trace_contains_safe_tool_details():
 
     assert response.tool_used == "order_lookup"
     assert trace.tool_arguments == {"order_id": "ORD-1007"}
+    assert trace.sanitized_tool_result is not None
+    assert trace.sanitized_tool_result["status"] == "shipped"
     trace_text = trace.to_json()
     assert "risk_score" not in trace_text
     assert "ava.morgan@example.test" not in trace_text
@@ -45,3 +52,11 @@ def test_debug_trace_contains_previous_messages_only():
     _, trace = agent.answer_with_trace("What about Canada?", session=session)
 
     assert trace.history == ("Do you ship internationally?",)
+
+
+def test_handoff_trace_has_reason():
+    agent = make_agent()
+    response, trace = agent.answer_with_trace("Can you give me a refund?")
+
+    assert response.handoff is True
+    assert trace.fallback_reason == "unsupported_action"

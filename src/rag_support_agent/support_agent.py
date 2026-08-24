@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 import json
 from typing import Any
@@ -19,6 +19,9 @@ class SupportResponse:
     handoff: bool = False
     tool_used: str | None = None
     tool_arguments: dict[str, str] | None = None
+    retrieved_passages: tuple[dict[str, Any], ...] = ()
+    sanitized_tool_result: dict[str, Any] | None = None
+    fallback_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -28,10 +31,13 @@ class DebugTrace:
     message: str
     history: tuple[str, ...]
     retrieved_sources: tuple[str, ...]
+    retrieved_passages: tuple[dict[str, Any], ...]
     tool_used: str | None
     tool_arguments: dict[str, str] | None
+    sanitized_tool_result: dict[str, Any] | None
     final_answer: str
     handoff: bool
+    fallback_reason: str | None
 
     def to_json(self) -> str:
         return json.dumps(
@@ -39,10 +45,13 @@ class DebugTrace:
                 "message": self.message,
                 "history": self.history,
                 "retrieved_sources": self.retrieved_sources,
+                "retrieved_passages": self.retrieved_passages,
                 "tool_used": self.tool_used,
                 "tool_arguments": self.tool_arguments,
+                "sanitized_tool_result": self.sanitized_tool_result,
                 "final_answer": self.final_answer,
                 "handoff": self.handoff,
+                "fallback_reason": self.fallback_reason,
             },
             indent=2,
         )
@@ -87,10 +96,13 @@ class SupportAgent:
             message=message,
             history=history,
             retrieved_sources=response.sources,
+            retrieved_passages=response.retrieved_passages,
             tool_used=response.tool_used,
             tool_arguments=response.tool_arguments,
+            sanitized_tool_result=response.sanitized_tool_result,
             final_answer=response.answer,
             handoff=response.handoff,
+            fallback_reason=response.fallback_reason,
         )
         return response, trace
 
@@ -115,6 +127,7 @@ class SupportAgent:
                     "Please contact a human support specialist for help with that request."
                 ),
                 handoff=True,
+                fallback_reason="privacy_request",
             )
 
         if self._asks_to_follow_document_instructions(message):
@@ -127,12 +140,14 @@ class SupportAgent:
                     "A human support specialist should review it."
                 ),
                 handoff=True,
+                fallback_reason="unsupported_action",
             )
 
         if self._is_order_status_question(message) or is_order_follow_up:
             if not order_id:
                 return SupportResponse(
                     answer="Please provide your order ID, such as ORD-1007, so I can check the order.",
+                    fallback_reason="order_id_required",
                 )
             return self._answer_order(order_id)
 
@@ -159,6 +174,12 @@ class SupportAgent:
                 handoff=result.get("handoff_recommended", False),
                 tool_used="order_lookup",
                 tool_arguments={"order_id": order_id},
+                sanitized_tool_result={
+                    "found": False,
+                    "error": result.get("error"),
+                    "order_id": order_id,
+                },
+                fallback_reason=result.get("error"),
             )
 
         data: dict[str, Any] = result["data"]
@@ -174,6 +195,8 @@ class SupportAgent:
             handoff=result.get("handoff_recommended", False),
             tool_used="order_lookup",
             tool_arguments={"order_id": order_id},
+            sanitized_tool_result=dict(data),
+            fallback_reason="operational_exception" if result.get("handoff_recommended") else None,
         )
 
     def _answer_from_knowledge(self, message: str) -> SupportResponse:
@@ -191,9 +214,11 @@ class SupportAgent:
                     "Please contact a human support specialist for confirmation."
                 ),
                 handoff=True,
+                fallback_reason="insufficient_information",
             )
 
         results = search_knowledge_base(customer_sections, message, limit=6)
+        passages = self._trace_passages(results)
         if not results:
             return SupportResponse(
                 answer=(
@@ -201,6 +226,7 @@ class SupportAgent:
                     "Please contact a human support specialist for confirmation."
                 ),
                 handoff=True,
+                fallback_reason="insufficient_information",
             )
 
         if self._is_source_conflict_question(message, results):
@@ -208,7 +234,7 @@ class SupportAgent:
 
         special_response = self._answer_special_policy_question(message)
         if special_response is not None:
-            return special_response
+            return replace(special_response, retrieved_passages=passages)
 
         best = self._choose_policy_section(message, results)
         source = self._source_name(best)
@@ -221,6 +247,7 @@ class SupportAgent:
                     f"Source: {source}"
                 ),
                 sources=(source,),
+                retrieved_passages=passages,
             )
 
         if self._requests_unsupported_action(message):
@@ -232,6 +259,8 @@ class SupportAgent:
                 ),
                 sources=(source,),
                 handoff=True,
+                retrieved_passages=passages,
+                fallback_reason="unsupported_action",
             )
 
         answer = best.text
@@ -240,6 +269,20 @@ class SupportAgent:
         return SupportResponse(
             answer=f"{answer}\n\nSource: {source}",
             sources=(source,),
+            retrieved_passages=passages,
+        )
+
+    @staticmethod
+    def _trace_passages(results: list[Any]) -> tuple[dict[str, Any], ...]:
+        return tuple(
+            {
+                "file_name": result.section.file_name,
+                "heading": result.section.heading,
+                "score": result.score,
+                "metadata": dict(result.section.metadata),
+                "text": result.section.text,
+            }
+            for result in results
         )
 
     def _find_section(self, file_name: str, heading: str) -> KnowledgeSection:
@@ -369,6 +412,8 @@ class SupportAgent:
                 self._source_name(product_section),
             ),
             handoff=True,
+            retrieved_passages=self._trace_passages(results),
+            fallback_reason="source_conflict",
         )
 
     @staticmethod
@@ -409,6 +454,7 @@ class SupportAgent:
                 "adhesive",
                 "material certification",
                 "all fabrics",
+                "recycled ocean plastic",
                 "guarantee",
             )
         )
