@@ -18,11 +18,10 @@ def make_app(answerer=None):
     return app
 
 
-def test_one_command_launchers_exist():
-    for filename in ("run_chat.bat", "run_chat.ps1"):
-        launcher = PROJECT_ROOT / filename
-        assert launcher.exists()
-        assert "rag_support_agent.web_app" in launcher.read_text(encoding="utf-8")
+def test_one_command_launcher_exists():
+    launcher = PROJECT_ROOT / "run_chat.bat"
+    assert launcher.exists()
+    assert "rag_support_agent.web_app" in launcher.read_text(encoding="utf-8")
 
 
 def test_browser_page_and_health_endpoint():

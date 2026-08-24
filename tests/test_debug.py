@@ -54,6 +54,20 @@ def test_debug_trace_contains_previous_messages_only():
     assert trace.history == ("Do you ship internationally?",)
 
 
+def test_debug_trace_keeps_history_when_using_a_session():
+    agent = make_agent()
+    session = agent.new_session()
+
+    _, first_trace = agent.answer_with_trace(
+        "Do you ship internationally?", session=session
+    )
+    _, second_trace = agent.answer_with_trace("What about Canada?", session=session)
+
+    assert first_trace.history == ()
+    assert second_trace.history == ("Do you ship internationally?",)
+    assert len(session.history) == 2
+
+
 def test_handoff_trace_has_reason():
     agent = make_agent()
     response, trace = agent.answer_with_trace("Can you give me a refund?")

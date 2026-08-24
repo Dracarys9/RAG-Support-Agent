@@ -80,7 +80,7 @@ This audit compares the original assignment brief preserved at `docs/assignment-
 | Tool calls and sanitized tool results | Complete | `SupportResponse.sanitized_tool_result`, `DebugTrace.sanitized_tool_result`, `llm.py` | Debug JSON includes safe tool output without private fields, and the optional model receives only that safe projection. |
 | Final response | Complete | `DebugTrace.final_answer` | Included in JSON trace. |
 | Errors, fallbacks, and handoffs | Complete | `SupportResponse.fallback_reason`, `DebugTrace.fallback_reason`, `handoff` | Missing IDs, privacy, insufficiency, unsupported actions, conflicts, and lookup errors have explicit reasons where applicable. |
-| Simple interface | Complete | `src/rag_support_agent/cli.py` | Terminal chat displays answer, sources, and human-help status. |
+| Simple interface | Complete | `src/rag_support_agent/cli.py`, `src/rag_support_agent/web_app.py`, `web/` | Terminal and browser chat display answers, safe sources, model mode, and human-help status. |
 
 ## README requirements
 
@@ -88,8 +88,8 @@ This audit compares the original assignment brief preserved at `docs/assignment-
 | --- | --- | --- | --- |
 | Clean-clone setup/run instructions | Complete | `README.md: Setup on Windows PowerShell` | Commands are documented and were tested locally. |
 | Environment variables and `.env.example` | Complete | `.env.example`, `.gitignore`, `README.md` | No real credentials are included. |
-| Model, embeddings, framework, storage choices | Complete | `README.md: Technology choices`, `src/rag_support_agent/llm.py` | States optional OpenAI-compatible `gpt-5-mini`, no embeddings, plain Python, file-based storage, and deterministic local fallback. |
-| Architecture explanation | Complete | `README.md: How it works` | Three-layer explanation is present. |
+| Model, embeddings, framework, storage choices | Complete | `README.md: Technology choices`, `src/rag_support_agent/llm.py`, `pyproject.toml` | States optional OpenAI-compatible Gemini or GPT, no embeddings, plain Python plus Flask, file-based storage, and deterministic local fallback. |
+| Architecture explanation | Complete | `README.md: How it works` | Four-layer explanation covers knowledge retrieval, safe order lookup, routing, and optional LLM answer writing. |
 | Evaluation command | Complete | `README.md` and `evaluation/run_visible.py` | Documented PowerShell command works. |
 | Baseline/final results by category | Complete | `README.md: Current result` and `Evaluation` | Overall baseline/final plus category table are present. |
 | Bug diary | Complete | `README.md: Bug diary` | Five entries are documented. |
@@ -99,6 +99,6 @@ This audit compares the original assignment brief preserved at `docs/assignment-
 
 ## Final audit conclusion
 
-The core support agent is working strongly against the supplied cases: **38 regular tests pass, 15/15 visible cases pass, and 5/5 original cases pass**. The project now has an optional real LLM-backed RAG path: retrieval selects a small set of safe passages, the model writes from that context, and the deterministic path remains available offline. The debug trace includes retrieved text, metadata, scores, sanitized tool results, generation mode, and fallback reasons.
+The core support agent is working strongly against the supplied cases: **45 regular tests pass, 15/15 visible cases pass, and 5/5 original cases pass**. The project now has an optional real LLM-backed RAG path: retrieval selects a small set of safe passages, the model writes from that context, and the deterministic path remains available offline. The debug trace includes retrieved text, metadata, scores, sanitized tool results, generation mode, and fallback reasons.
 
-The only remaining assignment item is the required **2–4 minute demo GIF/video** embedded or linked from the README. After the demo is added, run a final clean-clone check and a secret-file check before submission.
+The only remaining assignment item is the required **2–4 minute demo GIF/video** embedded or linked from the README. The cleanup pass also removes unused starter files and fixes CLI debug-session history. After the demo is added, run a final clean-clone check and a secret-file check before submission.

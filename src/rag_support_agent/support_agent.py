@@ -101,7 +101,7 @@ class SupportAgent:
         self, message: str, session: SupportSession | None = None
     ) -> tuple[SupportResponse, DebugTrace]:
         history = tuple(entry[0] for entry in session.history) if session else ()
-        response = self.answer(message, session=session)
+        response = session.answer(message) if session else self.answer(message)
         trace = DebugTrace(
             message=message,
             history=history,
