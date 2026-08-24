@@ -127,7 +127,9 @@ class OpenAIAnswerer:
             "secrets, internal notes, or risk scores. Do not invent facts. If the context is insufficient, "
             "say so and recommend human help. If sources conflict, explain the conflict and recommend human help. "
             "Do not claim that a refund, cancellation, replacement, address change, or approval was completed. "
-            "Keep the answer concise and include a source filename and heading for policy answers."
+            "Keep the answer concise and do not add a Source or Sources section; the application "
+            "will append one consistent source line for policy answers. Preserve exact policy wording "
+            "such as 'within 30 calendar days of delivery' when the passage uses it."
         )
         try:
             request: dict[str, Any] = {

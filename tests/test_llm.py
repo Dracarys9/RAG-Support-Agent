@@ -10,7 +10,10 @@ ROOT = Path(__file__).parents[1]
 
 
 class FakeMessage:
-    content = "The return window is 30 calendar days from delivery."
+    content = (
+        "A regular customer on the standard plan has 30 calendar days of delivery "
+        "to request a return.\n\n**Source:** `01-returns-policy-current.md` — *Standard return window*"
+    )
 
 
 class FakeChoice:
@@ -59,7 +62,9 @@ def test_llm_answerer_uses_selected_passages_only():
     response = agent.answer("How long does a regular customer have to return an unused backpack?")
 
     assert response.generation_mode == "llm"
-    assert "30 calendar days" in response.answer
+    assert "may request a return within 30 calendar days of delivery" in response.answer
+    assert response.answer.count("Source:") == 1
+    assert "**Source:**" not in response.answer
     assert response.sources
     prompt = client.completions.calls[0]["messages"][1]["content"]
     assert "01-returns-policy-current.md" in prompt

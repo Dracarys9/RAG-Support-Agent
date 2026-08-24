@@ -9,6 +9,7 @@ description = "A small, reliable support agent for the Aster & Row assignment"
 requires-python = ">=3.11"
 dependencies = [
     "openai>=1.0,<2",
+    "flask>=3.0,<4",
 ]
 
 [tool.setuptools]

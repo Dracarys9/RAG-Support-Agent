@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aster & Row Support</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="site-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Aster and Row support home">
+          <span class="brand-logo" aria-hidden="true">A<span>&</span>R</span>
+          <span class="brand-copy"><strong>Aster & Row</strong><small>Support concierge</small></span>
+        </a>
+        <div class="topbar-actions">
+          <div class="connection-pill"><span id="status-dot" class="status-dot offline"></span><span id="status-text">Connecting…</span></div>
+          <button id="new-chat" class="new-chat-button" type="button"><span aria-hidden="true">＋</span> New chat</button>
+        </div>
+      </header>
+
+      <div class="page-grid">
+        <section class="chat-card" aria-label="Chat with Aster and Row support">
+          <header class="chat-header">
+            <div class="agent-avatar"><span>AR</span><i aria-hidden="true"></i></div>
+            <div class="agent-heading">
+              <span class="chat-label">CONVERSATION</span>
+              <h1>Aster & Row support</h1>
+              <p>Usually replies in a few seconds · Here to help</p>
+            </div>
+            <div class="privacy-label"><span aria-hidden="true">▣</span> Private & secure</div>
+          </header>
+
+          <div id="messages" class="messages" aria-live="polite">
+            <div class="day-divider"><span>Today</span></div>
+            <article class="message assistant welcome-message">
+              <div class="message-avatar">AR</div>
+              <div class="message-stack">
+                <div class="message-meta"><strong>Aster & Row</strong><span>Now</span></div>
+                <div class="bubble">
+                  <p>Hi there. How can I help with your Aster & Row order?</p>
+                  <p>I can answer questions about returns, delivery, warranties, or an order such as <strong>ORD-1007</strong>.</p>
+                </div>
+                <div class="welcome-suggestions" aria-label="Suggested questions">
+                  <button type="button" data-question="How long does a regular customer have to return an unused backpack?">Return policy <span>→</span></button>
+                  <button type="button" data-question="Where is ORD-1007?">Track an order <span>→</span></button>
+                  <button type="button" data-question="Do you ship internationally?">Shipping help <span>→</span></button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="composer-wrap">
+            <div class="composer-hint"><span class="hint-icon" aria-hidden="true">✦</span><span>Ask naturally — I’ll search the approved support information.</span></div>
+            <form id="chat-form" class="composer">
+              <label class="sr-only" for="message-input">Message Aster & Row support</label>
+              <textarea id="message-input" rows="1" maxlength="2000" placeholder="Message Aster & Row support…" autocomplete="off"></textarea>
+              <button id="send-button" class="send-button" type="submit" aria-label="Send message"><span aria-hidden="true">↑</span></button>
+            </form>
+            <div class="composer-footer"><span>Enter to send · Shift + Enter for a new line</span><span id="character-count">0 / 2,000</span></div>
+          </div>
+        </section>
+
+        <aside class="details-card" aria-label="Answer details">
+          <div class="details-heading"><div><p class="eyebrow">LIVE CONTEXT</p><h2>Answer details</h2></div><button id="toggle-details" class="details-toggle" type="button" aria-expanded="true">Hide</button></div>
+          <p class="details-intro">See how the assistant is grounding each reply.</p>
+          <div id="details-content" class="details-content">
+          <div class="detail-stat-row">
+            <div class="detail-stat"><span class="detail-label">Answer mode</span><strong id="mode-value">—</strong></div>
+            <div class="detail-stat"><span class="detail-label">Evidence</span><strong id="source-count">—</strong></div>
+          </div>
+          <div id="source-area" class="source-area hidden">
+            <div class="context-heading"><span>Retrieved context</span><span class="context-caption">ranked passages</span></div>
+            <div id="source-list" class="source-list"></div>
+          </div>
+          <div id="handoff-area" class="handoff-area hidden"></div>
+          </div>
+          <div class="details-footnote"><span class="shield-icon" aria-hidden="true">✓</span><span>Private order fields stay hidden. Only safe status information is shown.</span></div>
+        </aside>
+      </div>
+
+      <footer class="footer-note">Aster & Row support assistant · Grounded in approved customer-facing information</footer>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

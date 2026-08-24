@@ -312,6 +312,7 @@ class SupportAgent:
                     history=history,
                     passages=passages,
                 )
+                generated = self._clean_generated_policy_answer(generated)
                 if source not in generated:
                     generated = f"{generated}\n\nSource: {source}"
                 return SupportResponse(
@@ -332,6 +333,38 @@ class SupportAgent:
             retrieved_passages=passages,
             fallback_reason="llm_unavailable" if self.llm_answerer is not None else None,
         )
+
+    @staticmethod
+    def _clean_generated_policy_answer(answer: str) -> str:
+        """Keep model wording grounded while letting the application own citations."""
+        cleaned_lines: list[str] = []
+        for line in answer.splitlines():
+            stripped = line.strip()
+            if re.match(r"^\*{0,2}\s*sources?\s*:\s*\*{0,2}", stripped, flags=re.IGNORECASE):
+                continue
+            if re.match(
+                r"^[-*]\s*`?[^`\n]+\.md`?\s+[—-]\s+.+$",
+                stripped,
+                flags=re.IGNORECASE,
+            ):
+                continue
+            cleaned_lines.append(line.rstrip())
+
+        cleaned = "\n".join(cleaned_lines).strip()
+        cleaned = re.sub(
+            r"\b(?:has|have)\s+(\*{0,2})30 calendar days of delivery(\*{0,2})\s+to request a return",
+            r"may request a return within \g<1>30 calendar days of delivery\g<2>",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(
+            r"(?<!within )\b30 calendar days of delivery\b",
+            "within 30 calendar days of delivery",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        return cleaned
 
     @staticmethod
     def _trace_passages(results: list[Any]) -> tuple[dict[str, Any], ...]:

@@ -8,7 +8,7 @@ The project currently passes all supplied visible evaluation cases.
 
 | Check | Result |
 | --- | --- |
-| Regular automated tests | **38 passed** |
+| Regular automated tests | **43 passed** |
 | Supplied visible cases | **15/15 passed** |
 | Original cases | **5/5 passed** |
 | Combined evaluation command | `python evaluation/run_visible.py` |
@@ -56,6 +56,20 @@ Type `quit` to stop the chat. To see a safe debug trace, run:
 .\.venv\Scripts\python.exe -m rag_support_agent.cli --debug
 ```
 
+Start the browser chat interface with one command:
+
+```
+.\run_chat.ps1
+```
+
+The launcher installs the project dependencies, opens `http://127.0.0.1:5000` in your browser, and starts the server. Stop the server with `Ctrl+C`. If PowerShell blocks local scripts, use:
+
+```
+powershell -ExecutionPolicy Bypass -File .\run_chat.ps1
+```
+
+The browser screen keeps one conversation session, shows retrieved sources and answer mode, and includes a New chat button. You can still start it manually with `.\.venv\Scripts\python.exe -m rag_support_agent.web_app`.
+
 Local mode is the default and needs no API key. The project also includes a real OpenAI-compatible LLM-backed RAG mode. Copy `.env.example` to `.env`, set `MODEL_PROVIDER=llm`, and add `OPENAI_API_KEY` to use model-generated answers. Real credentials must never be committed. If the key, package, or provider is unavailable, the agent safely falls back to the deterministic answer path.
 
 ## How it works
@@ -78,18 +92,18 @@ The implementation intentionally uses a small local Python program rather than a
 | Choice | Current implementation | Reason |
 | --- | --- | --- |
 | Language | Python 3.11 or newer | Simple setup and clear tests. |
-| Framework | Plain Python modules | The assignment does not require a web framework. |
+| Framework | Plain Python modules plus a small Flask server | Keeps the agent easy to inspect while adding a simple local browser interface. |
 | Retrieval | Case-insensitive word matching with a few simple word connections | Easy to inspect and deterministic for this small corpus. |
 | Embeddings | None in the current version | This avoids an external service and keeps evaluation repeatable. A production version could add embeddings after the safety and precedence rules are preserved. |
-| Model | Optional OpenAI-compatible `gpt-5-mini`; local deterministic fallback | The model writes grounded answers only from selected context. Local mode keeps tests repeatable and works without credentials. |
+| Model | Optional OpenAI-compatible Gemini or GPT model; local deterministic fallback | The model writes grounded answers only from selected context. Local mode keeps tests repeatable and works without credentials. |
 | Storage | Supplied Markdown and JSON files; sections are loaded in memory | No production database or vector store is needed for this assignment. |
-| Interface | Terminal chat | Small, easy to demonstrate, and sufficient for the assignment. |
+| Interface | Terminal chat and local browser chat | The terminal is useful for debugging; the browser screen makes conversation, sources, and model status easier to understand. |
 
 ## Safety behavior
 
 The agent does not expose customer email addresses, shipping addresses, internal notes, risk scores, or support tags. It treats document text and order data as information rather than instructions. It does not follow the prompt-injection text in the migration scratchpad. It does not promise that a refund, cancellation, replacement, address change, or approval has been completed.
 
-Debug mode records the current message, previous conversation messages, retrieved passage text, front-matter metadata, retrieval scores, safe tool arguments, a sanitized tool result, the final answer, handoff status, and a fallback reason. It never includes private order fields.
+Debug mode records the current message, previous conversation messages, retrieved passage text, front-matter metadata, retrieval scores, safe tool arguments, a sanitized tool result, the final answer, handoff status, and a fallback reason. The browser interface displays only safe summaries of sources and order results; it never includes private order fields.
 
 The agent asks for an order ID when one is missing, handles unknown IDs safely, uses the order status as authoritative, removes stale delivery fields for cancelled and returned orders, and does not invent an ETA when one is unavailable. It recommends human help for conflicts, insufficient information, unknown orders, privacy requests, unsupported actions, and operational exceptions.
 
@@ -187,7 +201,7 @@ One AI-generated suggestion was incomplete: an early order-question check used s
 
 ## Demo
 
-A short demo recording will be added to `docs/demo.gif` or as a clickable video link before final submission. It will show a cited policy answer, an order lookup, a multi-turn follow-up, a safe refusal or human handoff, and the evaluation command running.
+A short demo recording will be added to `docs/demo.gif` or as a clickable video link before final submission. It will show the browser chat, a cited policy answer, an order lookup, a multi-turn follow-up, a safe refusal or human handoff, and the evaluation command running.
 
 ## Repository contents
 
@@ -197,6 +211,8 @@ A short demo recording will be added to `docs/demo.gif` or as a clickable video 
 ├── docs/
 ├── evaluation/
 ├── knowledge-base/
+├── web/
+├── run_chat.ps1
 ├── src/rag_support_agent/
 ├── tests/
 ├── .env.example
