@@ -328,6 +328,8 @@ class SupportAgent:
                     passages=llm_passages or passages[:1],
                 )
                 generated = self._clean_generated_policy_answer(generated)
+                if self._is_standard_return_question(message):
+                    generated = self._remove_unrelated_membership_context(generated)
                 if source not in generated:
                     generated = f"{generated}\n\nSource: {source}"
                 return SupportResponse(
@@ -350,6 +352,33 @@ class SupportAgent:
             fallback_reason="llm_unavailable" if self.llm_answerer is not None else None,
             llm_error_code=llm_error_code,
         )
+
+    @staticmethod
+    def _is_standard_return_question(message: str) -> bool:
+        lowered = message.lower()
+        return (
+            "return" in lowered
+            and any(
+                phrase in lowered
+                for phrase in ("regular", "standard", "after 30", "30 days", "30-day")
+            )
+            and "trailplus" not in lowered
+        )
+
+    @staticmethod
+    def _remove_unrelated_membership_context(answer: str) -> str:
+        """Remove membership-only sentences from standard-customer answers."""
+        paragraphs: list[str] = []
+        for paragraph in re.split(r"\n{2,}", answer):
+            sentences = re.split(r"(?<=[.!?])\s+", paragraph.strip())
+            kept = [
+                sentence
+                for sentence in sentences
+                if not re.search(r"\btrailplus\b|\bmembership\b", sentence, re.IGNORECASE)
+            ]
+            if kept:
+                paragraphs.append(" ".join(kept))
+        return "\n\n".join(paragraphs).strip()
 
     @staticmethod
     def _clean_generated_policy_answer(answer: str) -> str:

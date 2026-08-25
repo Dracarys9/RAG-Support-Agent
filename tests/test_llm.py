@@ -54,6 +54,14 @@ class FailingClient:
         self.chat = FakeChat(FailingCompletions())
 
 
+class ExtraMembershipAnswerer:
+    def answer(self, message, *, history=(), passages=(), sanitized_tool_result=None):
+        return (
+            "Customers on the standard plan may request a return within 30 calendar days of delivery.\n\n"
+            "TrailPlus members receive a different return window if membership was active when the order was placed."
+        )
+
+
 def make_agent(answerer=None) -> SupportAgent:
     return SupportAgent(
         ROOT / "knowledge-base",
@@ -90,6 +98,18 @@ def test_llm_policy_cleanup_removes_repeated_within():
 
     assert "within within" not in cleaned.lower()
     assert "within 30 calendar days of delivery" in cleaned
+
+
+def test_standard_return_answer_removes_unrelated_membership_context():
+    response = make_agent(ExtraMembershipAnswerer()).answer(
+        "I am a regular customer. Can I return a backpack after 30 days?"
+    )
+
+    assert "standard plan" in response.answer.lower()
+    assert "trailplus" not in response.answer.lower()
+    assert response.sources == (
+        "01-returns-policy-current.md — Standard return window",
+    )
 
 
 def test_llm_policy_cleanup_removes_markdown_repeated_within():
