@@ -8,7 +8,7 @@ The project currently passes all supplied visible evaluation cases.
 
 | Check | Result |
 | --- | --- |
-| Regular automated tests | **44 passed** |
+| Regular automated tests | **48 passed** |
 | Supplied visible cases | **15/15 passed** |
 | Original cases | **5/5 passed** |
 | Combined evaluation command | `python evaluation/run_visible.py` |
@@ -62,19 +62,9 @@ Start the browser chat interface with one command. The easiest Windows option av
 .\run_chat.bat
 ```
 
-The launcher installs the project dependencies, opens `http://127.0.0.1:5000` in your browser, and starts the server. Stop the server with `Ctrl+C`. The PowerShell version is also available:
+The launcher installs the project dependencies, opens `http://127.0.0.1:5000` in your browser, and starts the server. Stop the server with `Ctrl+C`.
 
-```
-.\run_chat.ps1
-```
-
-If PowerShell blocks the `.ps1` file, use the `.bat` command above or run:
-
-```
-powershell -ExecutionPolicy Bypass -File .\run_chat.ps1
-```
-
-The browser screen keeps one conversation session, shows retrieved sources and answer mode, and includes a New chat button. You can still start it manually with `.\.venv\Scripts\python.exe -m rag_support_agent.web_app`.
+The browser screen keeps one conversation session, shows retrieved sources and answer mode, and includes a New chat button.
 
 Local mode is the default and needs no API key. The project also includes a real OpenAI-compatible LLM-backed RAG mode. Copy `.env.example` to `.env`, set `MODEL_PROVIDER=llm`, and add `OPENAI_API_KEY` to use model-generated answers. Real credentials must never be committed. If the key, package, or provider is unavailable, the agent safely falls back to the deterministic answer path.
 
@@ -109,7 +99,7 @@ The implementation intentionally uses a small local Python program rather than a
 
 The agent does not expose customer email addresses, shipping addresses, internal notes, risk scores, or support tags. It treats document text and order data as information rather than instructions. It does not follow the prompt-injection text in the migration scratchpad. It does not promise that a refund, cancellation, replacement, address change, or approval has been completed.
 
-Debug mode records the current message, previous conversation messages, retrieved passage text, front-matter metadata, retrieval scores, safe tool arguments, a sanitized tool result, the final answer, handoff status, and a fallback reason. The browser interface displays only safe summaries of sources and order results; it never includes private order fields.
+Debug mode records the current message, previous conversation messages, retrieved passage text, front-matter metadata, retrieval scores, safe tool arguments, a sanitized tool result, the final answer, handoff status, a fallback reason, and a secret-safe LLM error code when a provider call fails. Raw provider errors and credentials are never logged. The browser interface displays only safe summaries of sources and order results; it never includes private order fields.
 
 The agent asks for an order ID when one is missing, handles unknown IDs safely, uses the order status as authoritative, removes stale delivery fields for cancelled and returned orders, and does not invent an ETA when one is unavailable. It recommends human help for conflicts, insufficient information, unknown orders, privacy requests, unsupported actions, and operational exceptions.
 
@@ -127,15 +117,15 @@ The current final categories are:
 
 | Category | Result |
 | --- | --- |
-| Abstention | 1/1 |
+| Abstention | 2/2 |
 | Conversation | 1/1 |
 | Groundedness | 2/2 |
 | Multi-source grounding | 1/1 |
 | Privacy | 1/1 |
 | Prompt security | 1/1 |
 | Retrieval | 2/2 |
-| Source conflict | 1/1 |
-| Tool reliability | 3/3 |
+| Source conflict | 2/2 |
+| Tool reliability | 5/5 |
 | Tool use | 2/2 |
 | Unsupported action | 1/1 |
 
@@ -193,6 +183,16 @@ The original suite contains five additional cases: normalized order IDs, returne
 
 **Regression test:** `tests/test_debug.py::test_debug_trace_contains_previous_messages_only`.
 
+### Bug 6 — Regular return questions added an unrelated TrailPlus paragraph
+
+**Reproduction:** Ask, “I am a regular customer. Can I return a backpack after 30 days?”
+
+**Root cause:** Retrieval returned several return-related passages, and the LLM received all of them. The model added the TrailPlus rule even though the customer asked about the regular-customer rule.
+
+**Fix:** The policy chooser now prefers `Standard return window` for regular or 30-day wording, and the LLM receives only the selected authoritative passage for normal policy answers.
+
+**Regression tests:** `tests/test_support_agent.py::test_regular_after_30_days_uses_standard_return_window_section` and the focused passage assertions in `tests/test_llm.py`.
+
 ## Known limitations
 
 This is an assignment-sized local system, not a production deployment. Retrieval uses word matching rather than semantic embeddings, so unusual paraphrases may retrieve less useful sections. The optional LLM path depends on an OpenAI-compatible provider and should not be treated as available when the key or network is missing; the deterministic fallback remains the safe offline path. The special handling for the supplied policy conflicts is deliberate and should be replaced by a more general claim-comparison step for a larger corpus. The terminal interface has no authentication, and the mock assignment explicitly treats possession of an order ID as sufficient authentication. The system supports lookup only; it does not actually cancel orders, issue refunds, create replacements, change addresses, or create support tickets. Sessions exist only while the process is running.
@@ -201,7 +201,7 @@ Before production, I would add authenticated APIs, a durable session store, sema
 
 ## AI coding tools used
 
-The implementation was developed collaboratively using **Manus AI** for code planning, implementation suggestions, test writing, debugging, documentation drafting, and the optional LLM integration design. The runtime can use the OpenAI-compatible `gpt-5-mini` model when `MODEL_PROVIDER=llm` is configured. **Visual Studio Code**, PowerShell, Git, and GitHub were used for local review, testing, commits, and pushes.
+The implementation was developed collaboratively using **Manus AI** for code planning, implementation suggestions, test writing, debugging, documentation drafting, and the optional LLM integration design. The runtime can use an OpenAI-compatible Gemini or GPT model when `MODEL_PROVIDER=llm` is configured; the demonstrated configuration uses Gemini. **Visual Studio Code**, PowerShell, Git, and GitHub were used for local review, testing, commits, and pushes.
 
 One AI-generated suggestion was incomplete: an early order-question check used simple substring matching, which treated `ordered` as if it meant `order`. This caused a valid TrailPlus policy question to ask for an order ID. The check was changed to recognize complete words and a regression test was added.
 
@@ -219,7 +219,6 @@ A short demo recording will be added to `docs/demo.gif` or as a clickable video 
 ├── knowledge-base/
 ├── web/
 ├── run_chat.bat
-├── run_chat.ps1
 ├── src/rag_support_agent/
 ├── tests/
 ├── .env.example

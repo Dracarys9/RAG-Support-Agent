@@ -8,6 +8,10 @@ from typing import Any, Iterable
 class LLMUnavailable(RuntimeError):
     """Raised when the optional LLM mode cannot be used."""
 
+    def __init__(self, message: str, *, code: str = "unavailable") -> None:
+        super().__init__(message)
+        self.code = code
+
 
 @dataclass(frozen=True)
 class LLMConfig:
@@ -59,15 +63,22 @@ class OpenAIAnswerer:
 
     def _get_client(self) -> Any:
         if not self.config.enabled:
-            raise LLMUnavailable("LLM mode is disabled; using the local answer path.")
+            raise LLMUnavailable(
+                "LLM mode is disabled; using the local answer path.",
+                code="disabled",
+            )
         if not self.config.api_key and self._client is None:
-            raise LLMUnavailable("OPENAI_API_KEY is not configured.")
+            raise LLMUnavailable(
+                "OPENAI_API_KEY is not configured.",
+                code="missing_api_key",
+            )
         if self._client is None:
             try:
                 from openai import OpenAI
             except ImportError as exc:
                 raise LLMUnavailable(
-                    "The openai package is not installed. Install project dependencies first."
+                    "The openai package is not installed. Install project dependencies first.",
+                    code="missing_dependency",
                 ) from exc
             kwargs: dict[str, str] = {"api_key": self.config.api_key or ""}
             if self.config.base_url:
@@ -129,7 +140,9 @@ class OpenAIAnswerer:
             "Do not claim that a refund, cancellation, replacement, address change, or approval was completed. "
             "Keep the answer concise and do not add a Source or Sources section; the application "
             "will append one consistent source line for policy answers. Preserve exact policy wording "
-            "such as 'within 30 calendar days of delivery' when the passage uses it."
+            "such as 'within 30 calendar days of delivery' when the passage uses it. Answer only "
+            "the customer’s question; do not add unrelated membership or exception rules unless "
+            "the customer asks about them or they are necessary to answer the question."
         )
         try:
             request: dict[str, Any] = {
@@ -145,9 +158,16 @@ class OpenAIAnswerer:
                 request["max_tokens"] = 500
             response = client.chat.completions.create(**request)
         except Exception as exc:  # pragma: no cover - provider-specific failures
-            raise LLMUnavailable(f"LLM request failed: {exc}") from exc
+            # Keep provider details out of customer responses and debug logs.
+            raise LLMUnavailable(
+                f"LLM request failed: {type(exc).__name__}",
+                code="provider_request_failed",
+            ) from exc
 
         content = response.choices[0].message.content if response.choices else None
         if not content or not content.strip():
-            raise LLMUnavailable("The LLM returned an empty answer.")
+            raise LLMUnavailable(
+                "The LLM returned an empty answer.",
+                code="empty_response",
+            )
         return content.strip()

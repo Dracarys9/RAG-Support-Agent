@@ -22,6 +22,16 @@ def test_policy_question_uses_knowledge_search_and_source():
     assert response.handoff is False
 
 
+def test_regular_after_30_days_uses_standard_return_window_section():
+    response = make_agent().answer(
+        "I am a regular customer. Can I return a backpack after 30 days?"
+    )
+
+    assert response.sources == (
+        "01-returns-policy-current.md — Standard return window",
+    )
+
+
 def test_trailplus_return_question_uses_return_window_section():
     response = make_agent().answer(
         "My TrailPlus membership was active when I ordered. What is my return window?"

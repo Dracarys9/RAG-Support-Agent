@@ -44,6 +44,16 @@ class FakeClient:
         self.chat = FakeChat(self.completions)
 
 
+class FailingCompletions:
+    def create(self, **kwargs):
+        raise RuntimeError("provider failed with a private detail")
+
+
+class FailingClient:
+    def __init__(self) -> None:
+        self.chat = FakeChat(FailingCompletions())
+
+
 def make_agent(answerer=None) -> SupportAgent:
     return SupportAgent(
         ROOT / "knowledge-base",
@@ -80,6 +90,15 @@ def test_llm_policy_cleanup_removes_repeated_within():
 
     assert "within within" not in cleaned.lower()
     assert "within 30 calendar days of delivery" in cleaned
+
+
+def test_llm_policy_cleanup_removes_markdown_repeated_within():
+    cleaned = SupportAgent._clean_generated_policy_answer(
+        "A customer may request a return within **within 30 calendar days of delivery**."
+    )
+
+    assert "within **within" not in cleaned.lower()
+    assert "within **30 calendar days of delivery**" in cleaned
 
 
 def test_support_agent_uses_llm_with_sanitized_order_result():
@@ -134,6 +153,25 @@ def test_llm_mode_falls_back_to_deterministic_answer_when_key_is_missing():
     assert response.generation_mode == "deterministic"
     assert response.fallback_reason == "llm_unavailable"
     assert "30 calendar days" in response.answer
+
+
+def test_provider_failure_has_secret_safe_debug_code():
+    answerer = OpenAIAnswerer(
+        LLMConfig(provider="llm", model="test-model", api_key="private-key"),
+        client=FailingClient(),
+    )
+    agent = make_agent(answerer)
+
+    response, trace = agent.answer_with_trace(
+        "How long does a regular customer have to return an unused backpack?"
+    )
+
+    assert response.generation_mode == "deterministic"
+    assert response.fallback_reason == "llm_unavailable"
+    assert response.llm_error_code == "provider_request_failed"
+    assert trace.llm_error_code == "provider_request_failed"
+    assert "private detail" not in trace.to_json()
+    assert "private-key" not in trace.to_json()
 
 
 def test_local_config_does_not_enable_llm():

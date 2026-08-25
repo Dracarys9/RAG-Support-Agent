@@ -24,6 +24,7 @@ class SupportResponse:
     sanitized_tool_result: dict[str, Any] | None = None
     fallback_reason: str | None = None
     generation_mode: str = "deterministic"
+    llm_error_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class DebugTrace:
     handoff: bool
     fallback_reason: str | None
     generation_mode: str
+    llm_error_code: str | None
 
     def to_json(self) -> str:
         return json.dumps(
@@ -56,6 +58,7 @@ class DebugTrace:
                 "handoff": self.handoff,
                 "fallback_reason": self.fallback_reason,
                 "generation_mode": self.generation_mode,
+                "llm_error_code": self.llm_error_code,
             },
             indent=2,
         )
@@ -114,6 +117,7 @@ class SupportAgent:
             handoff=response.handoff,
             fallback_reason=response.fallback_reason,
             generation_mode=response.generation_mode,
+            llm_error_code=response.llm_error_code,
         )
 
         return response, trace
@@ -207,6 +211,7 @@ class SupportAgent:
             answer += f" Estimated delivery: {data['estimated_delivery']}."
 
         fallback_reason = "operational_exception" if result.get("handoff_recommended") else None
+        llm_error_code: str | None = None
         if self.llm_answerer is not None:
             try:
                 generated = self.llm_answerer.answer(
@@ -226,9 +231,11 @@ class SupportAgent:
                     sanitized_tool_result=dict(data),
                     fallback_reason=fallback_reason,
                     generation_mode="llm",
+                    llm_error_code=llm_error_code,
                 )
-            except LLMUnavailable:
+            except LLMUnavailable as exc:
                 fallback_reason = "llm_unavailable"
+                llm_error_code = getattr(exc, "code", "unavailable")
 
         return SupportResponse(
             answer=answer,
@@ -237,6 +244,7 @@ class SupportAgent:
             tool_arguments={"order_id": order_id},
             sanitized_tool_result=dict(data),
             fallback_reason=fallback_reason,
+            llm_error_code=llm_error_code,
         )
 
     def _answer_from_knowledge(
@@ -280,6 +288,12 @@ class SupportAgent:
 
         best = self._choose_policy_section(message, results)
         source = self._source_name(best)
+        llm_passages = tuple(
+            passage
+            for passage in passages
+            if passage.get("file_name") == best.file_name
+            and passage.get("heading") == best.heading
+        )
         if self._asks_to_follow_document_instructions(message):
             return SupportResponse(
                 answer=(
@@ -305,12 +319,13 @@ class SupportAgent:
                 fallback_reason="unsupported_action",
             )
 
+        llm_error_code: str | None = None
         if self.llm_answerer is not None:
             try:
                 generated = self.llm_answerer.answer(
                     message,
                     history=history,
-                    passages=passages,
+                    passages=llm_passages or passages[:1],
                 )
                 generated = self._clean_generated_policy_answer(generated)
                 if source not in generated:
@@ -320,9 +335,10 @@ class SupportAgent:
                     sources=(source,),
                     retrieved_passages=passages,
                     generation_mode="llm",
+                    llm_error_code=llm_error_code,
                 )
-            except LLMUnavailable:
-                pass
+            except LLMUnavailable as exc:
+                llm_error_code = getattr(exc, "code", "unavailable")
 
         answer = best.text
         if best.file_name == "09-trailplus-membership.md" and best.heading == "Return window":
@@ -332,6 +348,7 @@ class SupportAgent:
             sources=(source,),
             retrieved_passages=passages,
             fallback_reason="llm_unavailable" if self.llm_answerer is not None else None,
+            llm_error_code=llm_error_code,
         )
 
     @staticmethod
@@ -360,6 +377,12 @@ class SupportAgent:
         cleaned = re.sub(
             r"(?<!within )\b30 calendar days of delivery\b",
             "within 30 calendar days of delivery",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(
+            r"\bwithin\s+((?:\*{1,3}\s*)+)within\b\s*",
+            r"within \1",
             cleaned,
             flags=re.IGNORECASE,
         )
@@ -478,6 +501,19 @@ class SupportAgent:
                 if (
                     result.section.file_name == "09-trailplus-membership.md"
                     and result.section.heading == "Return window"
+                ):
+                    return result.section
+        if (
+            "return" in lowered
+            and any(
+                phrase in lowered
+                for phrase in ("regular", "standard", "after 30", "30 days", "30-day")
+            )
+        ):
+            for result in results:
+                if (
+                    result.section.file_name == "01-returns-policy-current.md"
+                    and result.section.heading == "Standard return window"
                 ):
                     return result.section
         return results[0].section

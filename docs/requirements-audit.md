@@ -47,7 +47,7 @@ This audit compares the original assignment brief preserved at `docs/assignment-
 | Keep relevant context across turns | Complete | `SupportSession`, `last_topic`, `last_order_id` | Canada and order follow-up tests pass. |
 | Handle Canada follow-up | Complete | `SupportSession` plus Canada special answer | Visible multi-turn case passes. |
 | Handle order delivery follow-up | Complete | `SupportSession.last_order_id`, `_looks_like_order_follow_up` | Visible multi-turn order behavior and session tests pass. |
-| Handle narrower exception follow-up | Partial | Session topic is retained and combined with follow-up text | Basic context exists, but more exception-specific paraphrase tests should be added to the original-case suite. |
+| Handle narrower exception follow-up | Complete for tested cases | Session topic is retained and combined with follow-up text | Standard return, TrailPlus, damaged-item, Canada, and order follow-ups are covered by routing and regression tests. Broader paraphrases remain a future extension. |
 | Isolate separate sessions | Complete | Each call to `new_session()` creates separate state | `tests/test_sessions.py` proves order IDs are not shared. |
 | Treat retrieved text and tool results as untrusted | Complete for supplied injection case | Document filtering, explicit migration-note handling, safe order projection | Prompt-injection visible case passes. General arbitrary injection patterns remain a limitation. |
 | Refuse system prompts, secrets, and internal data | Complete for supplied cases | `_asks_for_private_information` and safe refusal | Privacy and prompt-security visible cases pass. |
@@ -79,7 +79,7 @@ This audit compares the original assignment brief preserved at `docs/assignment-
 | Retrieved passages, metadata, and scores | Complete | `SupportResponse.retrieved_passages`, `DebugTrace.retrieved_passages`, `llm.py` | Debug JSON includes passage text, filename, heading, metadata, and score; the same selected passage blocks are the only knowledge context sent to the model. |
 | Tool calls and sanitized tool results | Complete | `SupportResponse.sanitized_tool_result`, `DebugTrace.sanitized_tool_result`, `llm.py` | Debug JSON includes safe tool output without private fields, and the optional model receives only that safe projection. |
 | Final response | Complete | `DebugTrace.final_answer` | Included in JSON trace. |
-| Errors, fallbacks, and handoffs | Complete | `SupportResponse.fallback_reason`, `DebugTrace.fallback_reason`, `handoff` | Missing IDs, privacy, insufficiency, unsupported actions, conflicts, and lookup errors have explicit reasons where applicable. |
+| Errors, fallbacks, and handoffs | Complete | `SupportResponse.fallback_reason`, `DebugTrace.fallback_reason`, `DebugTrace.llm_error_code`, `handoff` | Missing IDs, privacy, insufficiency, unsupported actions, conflicts, lookup errors, and secret-safe LLM failure categories are available without logging raw provider errors. |
 | Simple interface | Complete | `src/rag_support_agent/cli.py`, `src/rag_support_agent/web_app.py`, `web/` | Terminal and browser chat display answers, safe sources, model mode, and human-help status. |
 
 ## README requirements
@@ -99,6 +99,6 @@ This audit compares the original assignment brief preserved at `docs/assignment-
 
 ## Final audit conclusion
 
-The core support agent is working strongly against the supplied cases: **45 regular tests pass, 15/15 visible cases pass, and 5/5 original cases pass**. The project now has an optional real LLM-backed RAG path: retrieval selects a small set of safe passages, the model writes from that context, and the deterministic path remains available offline. The debug trace includes retrieved text, metadata, scores, sanitized tool results, generation mode, and fallback reasons.
+The core support agent is working strongly against the supplied cases: **48 regular tests pass, 15/15 visible cases pass, and 5/5 original cases pass**. The project now has an optional real LLM-backed RAG path: retrieval selects a small set of safe passages, the model writes from that context, and the deterministic path remains available offline. The debug trace includes retrieved text, metadata, scores, sanitized tool results, generation mode, and fallback reasons.
 
-The only remaining assignment item is the required **2–4 minute demo GIF/video** embedded or linked from the README. The cleanup pass also removes unused starter files and fixes CLI debug-session history. After the demo is added, run a final clean-clone check and a secret-file check before submission.
+The Markdown-formatted repeated-word and unrelated-TrailPlus issues are covered by regression tests, and the only remaining assignment item is the required **2–4 minute demo GIF/video** embedded or linked from the README. The cleanup pass also removes unused starter files and fixes CLI debug-session history. After the demo is added, run a final clean-clone check and a secret-file check before submission.

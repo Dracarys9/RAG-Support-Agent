@@ -26,7 +26,7 @@ If PowerShell blocks activation, run the project commands without activating the
 .\.venv\Scripts\python.exe evaluation\run_visible.py
 ```
 
-The current expected results are **45 passing tests**, **15/15 visible cases**, and **5/5 original cases**.
+The current expected results are **48 passing tests**, **15/15 visible cases**, and **5/5 original cases**.
 
 ## Run the local deterministic chat
 
@@ -50,7 +50,7 @@ The easiest Windows option is the batch launcher. It does not require a digital 
 
 The launcher installs the project dependencies if needed, opens the browser, and starts the support server. Open `http://127.0.0.1:5000` if the browser does not open automatically. Press `Ctrl+C` in PowerShell to stop the server.
 
-The browser interface uses the same support agent and keeps one conversation session while the server is running. It shows the answer, sources, retrieval details, human-help status, and whether Gemini or local mode produced the response. The API key remains on the server and is never placed in the browser page.
+The browser interface uses the same support agent and keeps one conversation session while the server is running. It shows the answer, sources, retrieval details, human-help status, and whether Gemini or local mode produced the response. The API key remains on the server and is never placed in the browser page. CLI debug output also includes a secret-safe provider error code when an LLM request falls back.
 
 The manual alternative is:
 
