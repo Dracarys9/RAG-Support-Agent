@@ -215,7 +215,9 @@ One AI-generated suggestion was incomplete: an early order-question check used s
 
 ## Demo
 
-A short demo recording will be added to `docs/demo.gif` or as a clickable video link before final submission. It will show the browser chat, a cited policy answer, an order lookup, a multi-turn follow-up, a safe refusal or human handoff, and the evaluation command running.
+[Watch the Aster & Row RAG Support Agent demo video](https://drive.google.com/file/d/1_DxGQIIL1BjIQz3vTQU1CXcKxRZCFPMw/view?usp=sharing)
+
+The approximately 3-minute demo shows a knowledge-base answer with citations, a safe `ORD-1007` order lookup, a multi-turn follow-up, a correct refusal with human-help recommendation, and the evaluation suite running with 20/20 cases passed. Google Drive is used because GitHub does not play uploaded video files inline in every context.
 
 ## Repository contents
 

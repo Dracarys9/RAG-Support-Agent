@@ -1,6 +1,6 @@
 # Assignment Requirements Audit
 
-This audit compares the original assignment brief preserved at `docs/assignment-brief.md` with the current application files, tests, evaluator, and README. It was prepared before creating the demo GIF/video.
+This audit compares the original assignment brief preserved at `docs/assignment-brief.md` with the current application files, tests, evaluator, and README. It was updated after adding the final demo video link.
 
 ## Status legend
 
@@ -95,10 +95,10 @@ This audit compares the original assignment brief preserved at `docs/assignment-
 | Bug diary | Complete | `README.md: Bug diary` | Five entries are documented. |
 | Limitations and production improvements | Complete | `README.md: Known limitations` | Limitations and production improvements are listed. |
 | AI coding tools and wrong suggestion | Complete | `README.md: AI coding tools used` | Tool use and the `ordered` false-match example are documented. |
-| 2–4 minute GIF/video embedded | **Missing** | `README.md` currently says the demo will be added | `docs/demo.gif` or a clickable video link does not exist yet. This is the main remaining submission artifact. |
+| 2–4 minute GIF/video embedded or linked | **Complete** | `README.md` → Demo | Clickable Google Drive link to the approximately 3-minute `Aster&Row_Demo.mp4` recording. |
 
 ## Final audit conclusion
 
-The core support agent is working strongly against the supplied cases: **48 regular tests pass, 15/15 visible cases pass, and 5/5 original cases pass**. The project now has an optional real LLM-backed RAG path: retrieval selects a small set of safe passages, the model writes from that context, and the deterministic path remains available offline. The debug trace includes retrieved text, metadata, scores, sanitized tool results, generation mode, and fallback reasons.
+The core support agent is working strongly against the supplied cases: **49 regular tests pass, 15/15 visible cases pass, and 5/5 original cases pass**. The project now has an optional real LLM-backed RAG path: retrieval selects a small set of safe passages, the model writes from that context, and the deterministic path remains available offline. The debug trace includes retrieved text, metadata, scores, sanitized tool results, generation mode, and fallback reasons.
 
-The Markdown-formatted repeated-word and unrelated-TrailPlus issues are covered by regression tests, and the only remaining assignment item is the required **2–4 minute demo GIF/video** embedded or linked from the README. The cleanup pass also removes unused starter files and fixes CLI debug-session history. After the demo is added, run a final clean-clone check and a secret-file check before submission.
+The Markdown-formatted repeated-word and unrelated-TrailPlus issues are covered by regression tests, and the required **2–4 minute demo GIF/video** is now linked from the README. The cleanup pass also removes unused starter files and fixes CLI debug-session history. Before submission, run one final clean-clone check and a secret-file check.
