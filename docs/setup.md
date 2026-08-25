@@ -26,7 +26,15 @@ If PowerShell blocks activation, run the project commands without activating the
 .\.venv\Scripts\python.exe evaluation\run_visible.py
 ```
 
-The current expected results are **48 passing tests**, **15/15 visible cases**, and **5/5 original cases**.
+The current expected results are **49 passing tests**, **15/15 visible cases**, and **5/5 original cases**.
+
+To test all visible and original scenarios through your configured real LLM without typing questions into the browser, run:
+
+```
+.\.venv\Scripts\python.exe evaluation\run_llm_cases.py --show-answers
+```
+
+This command uses your local `.env`, keeps multi-turn cases in one session, checks answer concepts, sources, tools, privacy, handoff, and fallback status, and never prints your API key. It may take several minutes because it sends the cases to the real provider one by one.
 
 ## Run the local deterministic chat
 

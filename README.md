@@ -8,7 +8,7 @@ The project currently passes all supplied visible evaluation cases.
 
 | Check | Result |
 | --- | --- |
-| Regular automated tests | **48 passed** |
+| Regular automated tests | **49 passed** |
 | Supplied visible cases | **15/15 passed** |
 | Original cases | **5/5 passed** |
 | Combined evaluation command | `python evaluation/run_visible.py` |
@@ -43,6 +43,14 @@ Run the visible evaluation:
 ```
 .\.venv\Scripts\python.exe evaluation\run_visible.py
 ```
+
+To test all visible and original scenarios through your configured real LLM without typing questions into the browser, run:
+
+```
+.\.venv\Scripts\python.exe evaluation\run_llm_cases.py --show-answers
+```
+
+This runner creates a fresh session for each scenario, keeps multi-turn messages together, checks the answer concepts, sources, tool behavior, privacy, handoff, and fallback status, and prints one simple result table. It uses your local `.env` and never prints the API key. Use `run_visible.py` for the official reproducible score; use `run_llm_cases.py` to smoke-test the real provider path.
 
 Start the terminal chat:
 
